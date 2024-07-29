@@ -1,14 +1,21 @@
 # %%
-import numpy as np
-import pandas as pd
-import openap
-from openap import top
-import matplotlib.pyplot as plt
+# %%
 import matplotlib
-from matplotlib.colors import Normalize
+import matplotlib.pyplot as plt
+import numpy as np
+import openap
+import pandas as pd
+import seaborn as sns
 from matplotlib.cm import ScalarMappable
-from sklearn.model_selection import train_test_split
+from matplotlib.colors import Normalize
+from openap import top
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+
+matplotlib.rc("font", size=12)
+matplotlib.rc("font", family="Ubuntu")
+matplotlib.rc("lines", linewidth=2, markersize=8)
+matplotlib.rc("grid", color="darkgray", linestyle=":")
 
 
 # %%
@@ -18,36 +25,33 @@ aircraft = openap.prop.aircraft(ac)
 max_range = wrap.cruise_range()["maximum"]
 m_mtow = aircraft["limits"]["MTOW"]
 oew = aircraft["limits"]["OEW"]
-font = 12
+
 # %%
 # Plotting ISA vs Expoential
-h = range(0, 18000, 50)
-temp = []
-r = []
-for i in range(len(h)):
-    pi, rhoi, Ti = openap.aero.atmos(h[i])
-    temp.append(Ti)
-    r.append(rhoi)
+h = np.arange(0, 18000, 50)
+pressure, density, temp = openap.aero.atmos(h)
 
 a, b, d = [85.46369268, -0.00017235, 213.31449979]
-temp_exp = []
-for i in range(len(h)):
-    temp_exp.append(a * np.exp(h[i] * b) + d)
+temp_exp = a * np.exp(h * b) + d
 
 
-fig = plt.figure(figsize=(7, 5))
-plt.plot(temp, h, "b", label="ISA")
-plt.plot(temp_exp, h, "r", label="Exponential approximation")
+fig = plt.figure(figsize=(6, 4))
+ax = plt.gca()
 
-plt.xlabel("Temperature, K", fontsize=font)
-plt.legend()
-plt.ylabel("Altitude, m", fontsize=font)
-plt.savefig(
-    "figures/ISA_exp.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=200,
-)
+ax.plot(temp, h, "tab:blue", label="ISA")
+ax.plot(temp_exp, h, "tab:red", label="Exponential approximation")
+
+ax.set_xlabel("Temperature, K")
+ax.set_ylabel("Altitude, m", rotation=0, ha="left")
+ax.legend()
+
+ax.spines["right"].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.yaxis.set_label_coords(-0.15, 1.02)
+
+plt.tight_layout()
+plt.savefig("figures/ISA_exp.png", bbox_inches="tight", pad_inches=0.1, dpi=200)
+
 plt.show()
 
 # %%
@@ -55,8 +59,10 @@ plt.show()
 dmin, dmax = 500, max_range
 distance = list(range(dmin, int(dmax), 800))
 mass = [0.7, 0.75, 0.8, 0.85, 0.9]
+
 # %%
-c = 0
+flights = []
+
 for m in mass:
     start_lon = -150
     start = (0, start_lon)
@@ -74,73 +80,39 @@ for m in mass:
     flight = (
         flight.drop(["latitude", "longitude", "h"], axis=1)
         .assign(
-            x=0,
-            y=lambda d: (d.y / 1000).round(-1).astype(int),
-            alt=lambda d: d.altitude.round(-2).astype(int),
-            tas=lambda d: d.tas.round().astype(int),
-            vertical_rate=lambda d: d.vertical_rate.round().astype(int),
-            heading=lambda d: d.heading.round().astype(int),
-            mass=lambda d: d.mass.round(-1).astype(int),
-            fuel=lambda d: d.fuel.round(-1).astype(int),
+            dist=lambda d: ((d.x - d.x.iloc[0]) / 1000).astype(int),
         )
-        .assign(y=lambda d: d.y - d.y.iloc[0])
-        .rename(
-            columns={
-                "alt": f"alt{c}",
-                "ts": f"ts{c}",
-                "mass": f"mass{c}",
-                "tas": f"tas{c}",
-                "mach": f"mach{c}",
-            }
-        )
-        .drop(["x", "y", "vertical_rate", "altitude", "heading", "fuel"], axis=1)
+        .drop(["x", "y"], axis=1)
+        .assign(flight_id=f"{int(m*100)}% MTOW")
     )
+    flights.append(flight)
 
-    r = []
-    for i in range(len(flight)):
-        ts = flight[f"ts{c}"][i]
-        tas = flight[f"tas{c}"][i] * openap.aero.kts
-        if i == 0:
-            dis = 0
-        else:
-            dis = dis + (ts - flight[f"ts{c}"][i - 1]) * tas
-        r.append(dis / 1000)
-    flight = flight.assign(distance=r).rename(columns={"distance": f"dist{c}"})
-    if c == 0:
-        df = flight
-    else:
-        df = pd.concat([df, flight], axis=1)
-    c = c + 1
+flights = pd.concat(flights, ignore_index=True)
+
+flights.to_csv("data/flights_different_mass.csv", index=False)
 
 # %%
-plt.figure(figsize=(7, 5))
-cmap = plt.get_cmap("viridis").reversed()
-norm = Normalize(
-    vmin=50600,
-    vmax=70200,
-)
-sm = ScalarMappable(norm=norm, cmap=cmap)
-for i in range(5):
-    plt.plot(
-        df[f"dist{i}"],
-        df[f"alt{i}"],
-        linewidth=2,
-        label=str(int(df[f"mass{i}"][0] / 780)) + "% MTOW",
-        c=sm.to_rgba(df[f"mass{i}"][0]),
-    )  # y=x line
 
-plt.xlabel("Distance, km", fontsize=font)
-plt.ylabel("Altitude, ft", fontsize=font)
-# plt.title("Cruise Altitude Variation with the Change in Takeoff Mass", fontsize=font)
-plt.legend()
-plt.savefig(
-    "figures/alt_vs_mass.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=200,
+flights = pd.read_csv("data/flights_different_mass.csv")
+
+plt.figure(figsize=(6, 4))
+ax = plt.gca()
+sns.lineplot(
+    data=flights, x="dist", y="altitude", hue="flight_id", palette="viridis_r", ax=ax
 )
+ax.set_xlabel("Distance, km")
+ax.set_ylabel("Altitude, ft", rotation=0, ha="left")
+ax.legend()
+
+ax.spines["right"].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.yaxis.set_label_coords(-0.15, 1.02)
+
+plt.savefig("figures/alt_vs_mass.png", bbox_inches="tight", pad_inches=0.1, dpi=150)
 
 plt.show()
+
+
 # %%
 c = 0
 for d in distance:
@@ -780,7 +752,6 @@ ax = fig.add_subplot()
 
 for i in range(-90, 90, 10):
     for j in range(-180, 180, 20):
-
         ax.plot(
             df_wind.query("latitude == @i and longitude == @j").t,
             df_wind.query("latitude == @i and longitude == @j").altitude * 0.3048,
