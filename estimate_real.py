@@ -3,6 +3,16 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+import matplotlib
+import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
+
+matplotlib.rc("font", size=12)
+matplotlib.rc("font", family="Ubuntu")
+matplotlib.rc("lines", linewidth=2, markersize=8)
+matplotlib.rc("grid", color="darkgray", linestyle=":")
 
 # %%
 dataset_opt = pd.read_csv("data/optimal/a320_optimal_df.csv")
@@ -53,25 +63,28 @@ print(f"Mean estimation error: {round(mean_err,2)}%")
 dataset_real.to_csv("data/a320_estimate_real.csv")
 # %%
 # Save accuracy check figure
-font = 12
-plt.figure(figsize=(7, 5))
-plt.scatter(df_testing.test / 1000, df_testing.pred / 1000)
-plt.plot(
+plt.figure(figsize=(6, 4))
+ax = plt.gca()
+ax.scatter(df_testing.test / 1000, df_testing.pred / 1000, c="tab:blue", s=35)
+ax.plot(
     [min(df_testing.test / 1000), max(df_testing.pred / 1000)],
     [min(df_testing.test / 1000), max(df_testing.pred / 1000)],
-    color="red",
-    linewidth=2,
+    color="tab:red",
     label="error = 0",
 )  # y=x line
-plt.xlabel("Train Takeoff Mass, tons", fontsize=font)
-plt.ylabel("Test Takeoff Mass, tons", fontsize=font)
-# plt.title("Model Accuracy check: Train Set vs Test Set", fontsize=font)
-plt.legend()
+ax.set_xlabel("Predicted TOW, tons")
+# ax.grid(True)
+ax.set_ylabel("Test TOW, tons", rotation=0, ha="left")
+ax.spines["right"].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.yaxis.set_label_coords(-0.095, 1.02)
+ax.legend()
+plt.tight_layout()
 plt.savefig(
     "figures/train_test_acc_check.png",
     bbox_inches="tight",
     pad_inches=0.1,
-    dpi=200,
+    dpi=150,
 )
 plt.show()
 
