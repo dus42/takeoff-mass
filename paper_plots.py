@@ -376,7 +376,7 @@ gs = matplotlib.gridspec.GridSpec(4, 90)
 cmap = plt.get_cmap("viridis").reversed()
 sm = ScalarMappable(norm=norm, cmap=cmap)
 ax1 = fig.add_subplot(gs[0:4, 0:37])
-ax2 = fig.add_subplot(gs[0:4, 43:90])
+ax2 = fig.add_subplot(gs[0:4, 47:90])
 
 ax1.scatter(x_real, y_real, c=sm.to_rgba(c_real), s=35)
 ax2.scatter(x_pred, y_pred, c=sm.to_rgba(c_pred), s=35)
@@ -388,8 +388,8 @@ for ax in [ax1, ax2]:
     ax.set_ylabel("Altitude, ft", rotation=0, ha="left")
     ax.yaxis.set_label_coords(-0.15, 1.02)
 
-ax1.set_title("Real Flights")
-ax2.set_title("Estimation using lookup tables")
+ax1.set_title("Real Flights", fontsize=12)
+ax2.set_title("Estimation using lookup tables", fontsize=12)
 
 
 cbar = plt.colorbar(
@@ -414,7 +414,7 @@ ax.hist(dataset_real.error, bins=40, color="tab:blue", edgecolor="gray")
 mu1 = dataset_real.error.abs().mean()
 median1 = dataset_real.error.median()
 sigma1 = dataset_real.error.std()
-props = dict(boxstyle="square", facecolor="white", alpha=0.5)
+props = dict(boxstyle="square", facecolor="white", alpha=0.5, edgecolor="gray")
 textstr1 = "\n".join(
     (
         r"$\mu_\mathrm{abs}=%.2f$" % (mu1,),
@@ -423,7 +423,8 @@ textstr1 = "\n".join(
     )
 )
 ax.set_xlabel("Estimation error, kg")
-ax.set_ylabel("Flights")
+ax.set_ylabel("Flights", rotation=0, ha="left")
+ax.yaxis.set_label_coords(-0.095, 1.02)
 # ax.set_yticklabels([])
 
 # ax.tick_params(axis="y", direction="in")
@@ -586,7 +587,8 @@ textstr1 = "\n".join(
         r"$\sigma=%.2f$" % (sigma1,),
     )
 )
-ax.set_ylabel("Flights")
+ax.set_ylabel("Flights", rotation=0, ha="left")
+ax.yaxis.set_label_coords(-0.095, 1.02)
 ax.set_xlabel("Estimation error, kg")
 ax.spines["right"].set_visible(False)
 ax.spines["top"].set_visible(False)
