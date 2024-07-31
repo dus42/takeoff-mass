@@ -370,7 +370,7 @@ plt.savefig(
 plt.show()
 
 # %%
-fig = plt.figure(figsize=(12, 4))
+fig = plt.figure(figsize=(11, 4))
 gs = matplotlib.gridspec.GridSpec(4, 90)
 
 cmap = plt.get_cmap("viridis").reversed()
@@ -388,8 +388,8 @@ for ax in [ax1, ax2]:
     ax.set_ylabel("Altitude, ft", rotation=0, ha="left")
     ax.yaxis.set_label_coords(-0.15, 1.02)
 
-ax1.set_title("Real Flights", fontsize=12)
-ax2.set_title("Estimation using lookup tables", fontsize=12)
+ax1.set_title("Real Flights")
+ax2.set_title("Estimation using lookup tables")
 
 
 cbar = plt.colorbar(
@@ -410,7 +410,7 @@ plt.show()
 # %%
 fig = plt.figure(figsize=(6, 4))
 ax = fig.add_subplot()
-ax.hist(dataset_real.error, bins=50, color="tab:blue", edgecolor="gray")
+ax.hist(dataset_real.error, bins=40, color="tab:blue", edgecolor="gray")
 mu1 = dataset_real.error.abs().mean()
 median1 = dataset_real.error.median()
 sigma1 = dataset_real.error.std()
@@ -575,7 +575,7 @@ df_three_feat = df_three_feat.assign(
 ###############
 plt.figure(figsize=(6, 4))
 ax = plt.gca()
-ax.hist(df_three_feat.error, bins=60)
+ax.hist(df_three_feat.error, bins=40, edgecolor="gray")
 mu1 = df_three_feat.error.abs().mean()
 median1 = df_three_feat.error.median()
 sigma1 = df_three_feat.error.std()
@@ -639,17 +639,17 @@ for i in range(-90, 90, 10):
         ax.plot(
             df_wind.query("latitude == @i and longitude == @j").t,
             df_wind.query("latitude == @i and longitude == @j").altitude * 0.3048,
-            "tab:green",
+            "wheat",
             label="Real temperature" if i == 0 and j == 0 else "_nolegend_",
         )
 for i in range(-20, 30, 10):
     if i == 0:
-        ax.plot(np.array(temp) + i, h, "tab:red", linewidth=4, label="ISA model")
+        ax.plot(np.array(temp) + i, h, "tab:red", label="ISA model")
         ax.plot(
             np.array(temp_exp) + i,
             h,
             "tab:blue",
-            linewidth=4,
+            # linewidth=4,
             label="ISA apprixomation",
         )
     else:
@@ -657,15 +657,17 @@ for i in range(-20, 30, 10):
             np.array(temp) + i,
             h,
             "tab:red",
+            linestyle="dashed",
             label="ISA model with shifts" if i == -10 else "_nolegend_",
         )
         ax.plot(
             np.array(temp_exp) + i,
             h,
             "tab:blue",
+            linestyle="dashed",
             label="ISA approximation with shifts" if i == -10 else "_nolegend_",
         )
-ax.set_ylim(0, 18000)
+ax.set_ylim(0, 17500)
 # ax.grid(True)
 
 ax.set_xlabel("Temperature, K")
