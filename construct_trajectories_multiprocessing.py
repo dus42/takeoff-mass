@@ -84,7 +84,7 @@ def generate_ac(ac, workers=8, grid_size=40, overwrite=False):
 
     options = pd.DataFrame(options, columns=["mass", "distance"])
 
-    fout = f"{root_dir}/data/optimal/all_flights_per_ac/{ac}.csv"
+    fout = f"{root_dir}/data/optimal/all_flights_per_ac/{ac}-isa.csv"
 
     if not overwrite and Path(fout).exists():
         return

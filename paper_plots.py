@@ -47,6 +47,9 @@ ax.legend()
 ax.spines["right"].set_visible(False)
 ax.spines["top"].set_visible(False)
 ax.yaxis.set_label_coords(-0.15, 1.02)
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
 
 plt.tight_layout()
 plt.savefig("figures/ISA_exp.png", bbox_inches="tight", pad_inches=0.1, dpi=200)
@@ -57,7 +60,7 @@ plt.show()
 
 dmin, dmax = 500, max_range
 distance = list(range(dmin, int(dmax), 800))
-mass = [0.7, 0.75, 0.8, 0.85, 0.9]
+mass = np.arange(0.7, 0.95, 0.05)
 
 # %%
 flights = []
@@ -104,6 +107,9 @@ ax.legend(loc="right")
 ax.spines["right"].set_visible(False)
 ax.spines["top"].set_visible(False)
 ax.yaxis.set_label_coords(-0.15, 1.02)
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
 
 plt.savefig("figures/alt_vs_dist.png", bbox_inches="tight", pad_inches=0.1, dpi=150)
 
@@ -155,6 +161,9 @@ ax.legend()
 ax.spines["right"].set_visible(False)
 ax.spines["top"].set_visible(False)
 ax.yaxis.set_label_coords(-0.15, 1.02)
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
 
 plt.savefig("figures/alt_vs_mass.png", bbox_inches="tight", pad_inches=0.1, dpi=150)
 
@@ -162,12 +171,12 @@ plt.show()
 
 # %%
 dataset_real = pd.read_csv("data/a320_estimate_real.csv")
-dataset_opt = pd.read_csv("data/optimal/a320_optimal_df.csv")
+dataset_opt = pd.read_csv("data/optimal/a320_optimal_df.csv").query("distance>500")
 dataset_opt = dataset_opt.loc[:, ~dataset_opt.columns.str.contains("^Unnamed")]
 df_opensky = pd.read_csv("data/a320_estimate_opensky.csv").query(
     "mean_cruise_altitude<40500 and distance<@max_range and takeoff_mass<@m_mtow"
 )
-df_isa = pd.read_csv("data/optimal/a320_isa_df.csv")
+df_isa = pd.read_csv("data/optimal/a320_isa_df.csv").query("distance>500")
 [x_opt, y_opt, c_opt] = [
     dataset_opt.distance,
     dataset_opt.mean_cruise_altitude,
@@ -226,11 +235,13 @@ sm = ScalarMappable(norm=norm, cmap=cmap)
 ax.scatter(x_opt, y_opt, c=sm.to_rgba(c_opt), s=35)
 
 cbar = plt.colorbar(sm, ax=ax)
-ax.text(4600, 41600, "TOW, tons")
+ax.text(4600, 41700, "TOW, tons")
 
 ax.set_xlabel("Distance, km")
 ax.set_ylabel("Mean Cruise Altitude, ft", rotation=0, ha="left")
-
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
 ax.grid(True)
 
 ax.yaxis.set_label_coords(-0.15, 1.02)
@@ -259,16 +270,18 @@ ax.text(4500, 40300, "TOW, tons")
 
 ax.set_xlabel("Distance, km")
 ax.set_ylabel("Mean Cruise Altitude, ft", rotation=0, ha="left")
-
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
 ax.grid(True)
 ax.yaxis.set_label_coords(-0.15, 1.02)
+plt.tight_layout()
 plt.savefig(
     "figures/opensky.png",
     bbox_inches="tight",
     pad_inches=0.1,
     dpi=150,
 )
-plt.tight_layout()
 
 plt.show()
 # %%
@@ -279,24 +292,27 @@ cmap = plt.get_cmap("viridis").reversed()
 sm = ScalarMappable(norm=norm, cmap=cmap)
 ax.scatter(x_opt, y_opt, c=sm.to_rgba(c_opt), s=35)
 ax.scatter(
-    dataset_real.query("fid== 'ac1-436'").distance.values[0],
-    dataset_real.query("fid== 'ac1-436'").mean_cruise_altitude.values[0],
+    dataset_real.query("fid== 'ac1-571'").distance.values[0],
+    dataset_real.query("fid== 'ac1-571'").mean_cruise_altitude.values[0],
     s=100,
     c="tab:red",
+    alpha=0.5,
 )
 ax.scatter(
-    dataset_real.query("fid== 'ac1-436'").distance.values[0],
-    dataset_real.query("fid== 'ac1-436'").mean_cruise_altitude.values[0],
-    c=sm.to_rgba(dataset_real.query("fid== 'ac1-436'").takeoff_mass.values[0] / 1000),
+    dataset_real.query("fid== 'ac1-571'").distance.values[0],
+    dataset_real.query("fid== 'ac1-571'").mean_cruise_altitude.values[0],
+    c=sm.to_rgba(dataset_real.query("fid== 'ac1-571'").takeoff_mass.values[0] / 1000),
     s=35,
 )
 
 cbar = plt.colorbar(sm, ax=ax)
-ax.text(4600, 41600, "TOW, tons")
+ax.text(4600, 41700, "TOW, tons")
 
 ax.set_xlabel("Distance, km")
 ax.set_ylabel("Mean Cruise Altitude, ft", rotation=0, ha="left")
-
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
 ax.grid(True)
 
 ax.yaxis.set_label_coords(-0.15, 1.02)
@@ -310,10 +326,10 @@ plt.savefig(
 plt.show()
 
 # %%
-sample_df = pd.read_csv("data/sample_flight/flight.csv")
+sample_df = pd.read_csv("data/sample_flight/flight-ac1-571.csv")
 d = sample_df.distance.max()
 start_lon = -150
-m = dataset_real.query("fid== 'ac1-436'").pred.values[0] / m_mtow
+m = dataset_real.query("fid== 'ac1-571'").pred.values[0] / m_mtow
 start = (0, start_lon)
 end = (0, start_lon + d / 111.321)
 
@@ -331,10 +347,10 @@ flight = (
     )
     .drop(["x", "y"], axis=1)
 )
-flight.to_csv("data/sample_flight/fuel_optimal_flight.csv")
+flight.to_csv("data/sample_flight/fuel_optimal_flight-ac1-571.csv")
 # %%
-sample_df = pd.read_csv("data/sample_flight/flight.csv")
-flight = pd.read_csv("data/sample_flight/fuel_optimal_flight.csv")
+sample_df = pd.read_csv("data/sample_flight/flight-ac1-571.csv")
+flight = pd.read_csv("data/sample_flight/fuel_optimal_flight-ac1-571.csv")
 fig = plt.figure(figsize=(6, 4))
 ax = plt.gca()
 
@@ -342,14 +358,14 @@ ax.plot(
     sample_df.distance,
     sample_df.altitude,
     color="tab:red",
-    label=f"Real, m = {round(sample_df.gw_kg.max()/1000,2)} tons",
+    label=f"Real, TOW = {round(sample_df.gw_kg.max()/1000,2)} tons",
 )
 
 ax.plot(
     flight.distance,
     flight.altitude,
     color="tab:blue",
-    label=f"Optimal, m = {round(flight.mass.max()/1000,2)} tons",
+    label=f"Optimal, TOW = {round(flight.mass.max()/1000,2)} tons",
 )
 
 ax.set_xlabel("Distance, km")
@@ -359,10 +375,13 @@ ax.legend()
 ax.spines["right"].set_visible(False)
 ax.spines["top"].set_visible(False)
 ax.yaxis.set_label_coords(-0.15, 1.02)
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
 
 plt.tight_layout()
 plt.savefig(
-    f"figures/sample_real_opt_plots_ac1-436.png",
+    f"figures/sample_real_opt_plots_ac1-571.png",
     bbox_inches="tight",
     pad_inches=0.1,
     dpi=150,
@@ -386,9 +405,12 @@ for ax in [ax1, ax2]:
     ax.grid(True)
     ax.set_xlabel("Distance, km")
     ax.set_ylabel("Altitude, ft", rotation=0, ha="left")
-    ax.yaxis.set_label_coords(-0.15, 1.02)
+    ax.yaxis.set_label_coords(-0.18, 1.02)
+    ax.get_yaxis().set_major_formatter(
+        matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+    )
 
-ax1.set_title("Real Flights", fontsize=12)
+ax1.set_title("Real flights", fontsize=12)
 ax2.set_title("Estimation using lookup tables", fontsize=12)
 
 
@@ -396,7 +418,6 @@ cbar = plt.colorbar(
     sm,
     ax=ax2,
 )
-ax1.yaxis.set_label_coords(-0.15, 1.02)
 ax2.text(3500, 39700, "TOW, tons")
 
 plt.savefig(
@@ -499,7 +520,10 @@ ax.text(4600, 41600, "TOW, tons")
 
 ax.set_xlabel("Distance, km")
 ax.set_ylabel("Max Cruise Altitude, ft", rotation=0, ha="left")
-
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
+# ax.set_ylim(33000, 42000)
 ax.grid(True)
 ax.yaxis.set_label_coords(-0.15, 1.02)
 plt.tight_layout()
@@ -522,11 +546,13 @@ sm = ScalarMappable(norm=norm, cmap=cmap)
 ax.scatter(x_opt_max, y_opt_max, c=sm.to_rgba(c_opt_max), s=35)
 
 cbar = plt.colorbar(sm, ax=ax)
-ax.text(4600, 41600, "TOW, tons")
+ax.text(4600, 42000, "TOW, tons")
 
 ax.set_xlabel("Distance, km")
 ax.set_ylabel("Max Cruise Altitude, ft", rotation=0, ha="left")
-
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
 ax.grid(True)
 ax.yaxis.set_label_coords(-0.15, 1.02)
 
@@ -594,7 +620,7 @@ ax.spines["right"].set_visible(False)
 ax.spines["top"].set_visible(False)
 # ax.set_yticklabels([])
 ax.text(
-    0.05,
+    0.65,
     0.95,
     textstr1,
     transform=ax.transAxes,
@@ -609,6 +635,42 @@ plt.savefig(
     dpi=150,
 )
 plt.show()
+
+# %% three feat table
+tabl2 = []
+for i in list(range(39, 31, -1)):
+    alt = i * 1000
+    alt_min = alt - 500
+    alt_max = alt + 500
+
+    if i == 39:
+        alt_max = 50_000
+    elif i == 32:
+        alt_min = 0
+
+    me = df_three_feat.query("@alt_max > mean_cruise_altitude > @alt_min").error.mean()
+    mae = (
+        df_three_feat.query("@alt_max > mean_cruise_altitude > @alt_min")
+        .error.abs()
+        .mean()
+    )
+    mape = df_three_feat.query(
+        "@alt_max > mean_cruise_altitude > @alt_min"
+    ).error_percent.mean()
+    num_fli = len(df_three_feat.query("@alt_max > mean_cruise_altitude > @alt_min"))
+    tabl2.append(
+        {
+            "# of flights": num_fli,
+            "alt, ft": alt,
+            "me, kg": me.astype(int),
+            "mae, kg": mae.astype(int),
+            "mape %": mape,
+        }
+    )
+    tabl2_df = pd.DataFrame.from_dict(tabl2)
+
+tabl2_df
+
 # %%
 import xarray as xr
 
@@ -646,9 +708,9 @@ for i in range(-90, 90, 10):
         )
 for i in range(-20, 30, 10):
     if i == 0:
-        ax.plot(np.array(temp) + i, h, "tab:red", label="ISA model")
+        ax.plot(temp + i, h, "tab:red", label="ISA model")
         ax.plot(
-            np.array(temp_exp) + i,
+            temp_exp + i,
             h,
             "tab:blue",
             # linewidth=4,
@@ -656,14 +718,14 @@ for i in range(-20, 30, 10):
         )
     else:
         ax.plot(
-            np.array(temp) + i,
+            temp + i,
             h,
             "tab:red",
             linestyle="dashed",
             label="ISA model with shifts" if i == -10 else "_nolegend_",
         )
         ax.plot(
-            np.array(temp_exp) + i,
+            temp_exp + i,
             h,
             "tab:blue",
             linestyle="dashed",
@@ -671,7 +733,9 @@ for i in range(-20, 30, 10):
         )
 ax.set_ylim(0, 17500)
 # ax.grid(True)
-
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
 ax.set_xlabel("Temperature, K")
 ax.set_ylabel("Altitude, m", rotation=0, ha="left")
 ax.legend()

@@ -17,7 +17,7 @@ matplotlib.rc("grid", color="darkgray", linestyle=":")
 # %%
 dataset_opt = pd.read_csv("data/optimal/a320_optimal_df.csv")
 dataset_opt = dataset_opt.loc[:, ~dataset_opt.columns.str.contains("^Unnamed")]
-dataset_opt = dataset_opt.drop(columns=["max_cruise_altitude"])
+dataset_opt = dataset_opt.drop(columns=["max_cruise_altitude"]).query("distance>500")
 X = dataset_opt.iloc[:, 1:3].values
 y = dataset_opt.iloc[:, 3].values
 

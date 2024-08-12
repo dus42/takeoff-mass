@@ -25,6 +25,7 @@ def opt_df_creation(ac):
             {
                 "ac": ac,
                 "mean_cruise_altitude": df.altitude.mean(),
+                "max_cruise_altitude": df.altitude.max(),
                 "distance": df1.flight_distance.iloc[0],
                 "takeoff_mass": df1.takeoff_mass.iloc[0],
                 "landing_mass": df1.mass.min(),
