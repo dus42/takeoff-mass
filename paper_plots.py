@@ -52,7 +52,7 @@ ax.get_yaxis().set_major_formatter(
 )
 
 plt.tight_layout()
-plt.savefig("figures/ISA_exp.png", bbox_inches="tight", pad_inches=0.1, dpi=200)
+plt.savefig("figures/ISA_exp.png", bbox_inches="tight", dpi=150)
 
 plt.show()
 
@@ -111,7 +111,7 @@ ax.get_yaxis().set_major_formatter(
     matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
 )
 
-plt.savefig("figures/alt_vs_dist.png", bbox_inches="tight", pad_inches=0.1, dpi=150)
+plt.savefig("figures/alt_vs_dist.png", bbox_inches="tight", dpi=150)
 
 plt.show()
 # %%
@@ -165,7 +165,7 @@ ax.get_yaxis().set_major_formatter(
     matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
 )
 
-plt.savefig("figures/alt_vs_mass.png", bbox_inches="tight", pad_inches=0.1, dpi=150)
+plt.savefig("figures/alt_vs_mass.png", bbox_inches="tight", dpi=150)
 
 plt.show()
 
@@ -225,6 +225,7 @@ norm = Normalize(
         c_isa_max.max(),
     ),
 )
+
 # %%
 plt.figure(figsize=(6, 4))
 ax = plt.gca()
@@ -246,17 +247,11 @@ ax.grid(True)
 
 ax.yaxis.set_label_coords(-0.15, 1.02)
 plt.tight_layout()
-plt.savefig(
-    "figures/lookup.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=150,
-)
-
+plt.savefig("figures/lookup.png", bbox_inches="tight", dpi=150)
 
 plt.show()
-# %%
 
+# %%
 plt.figure(figsize=(6, 4))
 ax = plt.gca()
 
@@ -276,14 +271,10 @@ ax.get_yaxis().set_major_formatter(
 ax.grid(True)
 ax.yaxis.set_label_coords(-0.15, 1.02)
 plt.tight_layout()
-plt.savefig(
-    "figures/opensky.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=150,
-)
-
+plt.savefig("figures/opensky.png", bbox_inches="tight", dpi=150)
 plt.show()
+
+
 # %%
 plt.figure(figsize=(6, 4))
 ax = plt.gca()
@@ -317,12 +308,7 @@ ax.grid(True)
 
 ax.yaxis.set_label_coords(-0.15, 1.02)
 plt.tight_layout()
-plt.savefig(
-    "figures/sample_real_in_lookup.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=150,
-)
+plt.savefig("figures/sample_real_in_lookup.png", bbox_inches="tight", dpi=150)
 plt.show()
 
 # %%
@@ -380,22 +366,17 @@ ax.get_yaxis().set_major_formatter(
 )
 
 plt.tight_layout()
-plt.savefig(
-    f"figures/sample_real_opt_plots_ac1-571.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=150,
-)
+plt.savefig(f"figures/sample_real_opt_plots_ac1-571.png", bbox_inches="tight", dpi=150)
 plt.show()
 
 # %%
-fig = plt.figure(figsize=(11, 4))
-gs = matplotlib.gridspec.GridSpec(4, 90)
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 8))
+# gs = matplotlib.gridspec.GridSpec(4, 90)
 
 cmap = plt.get_cmap("viridis").reversed()
 sm = ScalarMappable(norm=norm, cmap=cmap)
-ax1 = fig.add_subplot(gs[0:4, 0:37])
-ax2 = fig.add_subplot(gs[0:4, 47:90])
+# ax1 = fig.add_subplot(gs[0:4, 0:37])
+# ax2 = fig.add_subplot(gs[0:4, 47:90])
 
 ax1.scatter(x_real, y_real, c=sm.to_rgba(c_real), s=35)
 ax2.scatter(x_pred, y_pred, c=sm.to_rgba(c_pred), s=35)
@@ -409,40 +390,33 @@ for ax in [ax1, ax2]:
     ax.get_yaxis().set_major_formatter(
         matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
     )
+    cbar = plt.colorbar(sm, ax=ax)
+    ax.text(3500, 39700, "TOW, tons")
 
 ax1.set_title("Real flights", fontsize=12)
 ax2.set_title("Estimation using lookup tables", fontsize=12)
-
-
-cbar = plt.colorbar(
-    sm,
-    ax=ax2,
-)
-ax2.text(3500, 39700, "TOW, tons")
-
-plt.savefig(
-    "figures/real_vs_opt.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=150,
-)
 plt.tight_layout()
+plt.savefig("figures/real_vs_opt.png", bbox_inches="tight", dpi=150)
 plt.show()
+
 # %%
 fig = plt.figure(figsize=(6, 4))
 ax = fig.add_subplot()
 ax.hist(dataset_real.error, bins=40, color="tab:blue", edgecolor="gray")
-mu1 = dataset_real.error.abs().mean()
-median1 = dataset_real.error.median()
-sigma1 = dataset_real.error.std()
-props = dict(boxstyle="square", facecolor="white", alpha=0.5, edgecolor="gray")
-textstr1 = "\n".join(
-    (
-        r"$\mu_\mathrm{abs}=%.2f$" % (mu1,),
-        r"$\mathrm{median}=%.2f$" % (median1,),
-        r"$\sigma=%.2f$" % (sigma1,),
-    )
-)
+
+me = dataset_real.error.mean()
+mape = dataset_real.error_percent.mean()
+mae = dataset_real.error.abs().mean()
+median = dataset_real.error.median()
+std = dataset_real.error.std()
+
+textstr1 = f"""\
+MAE:  {mae:.2f}
+MAPE: {mape:.2f}%
+ME:   {me:.2f}
+STD:  {std:.2f}\
+"""
+
 ax.set_xlabel("Estimation error, kg")
 ax.set_ylabel("Flights", rotation=0, ha="left")
 ax.yaxis.set_label_coords(-0.095, 1.02)
@@ -457,17 +431,11 @@ ax.text(
     0.95,
     textstr1,
     transform=ax.transAxes,
-    fontsize=12,
+    fontsize=14,
+    fontfamily="monospace",
     verticalalignment="top",
-    bbox=props,
 )
-# ax.grid(True)
-plt.savefig(
-    "figures/estimation_err_hist.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=200,
-)
+plt.savefig("figures/estimation_err_hist.png", bbox_inches="tight", dpi=150)
 plt.show()
 
 # %%
@@ -527,12 +495,7 @@ ax.get_yaxis().set_major_formatter(
 ax.grid(True)
 ax.yaxis.set_label_coords(-0.15, 1.02)
 plt.tight_layout()
-plt.savefig(
-    "figures/lookup_isa.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=150,
-)
+plt.savefig("figures/lookup_isa.png", bbox_inches="tight", dpi=150)
 
 plt.show()
 
@@ -557,12 +520,7 @@ ax.grid(True)
 ax.yaxis.set_label_coords(-0.15, 1.02)
 
 plt.tight_layout()
-plt.savefig(
-    "figures/lookup_max_cruise.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=150,
-)
+plt.savefig("figures/lookup_max_cruise.png", bbox_inches="tight", dpi=150)
 plt.show()
 
 # %%
@@ -599,20 +557,25 @@ df_testing = df_testing.assign(error_percent=lambda x: abs(x.error / x.test) * 1
 df_three_feat = df_three_feat.assign(
     error_percent=lambda x: abs(x.error / x.takeoff_mass) * 100
 )
+
 ###############
 plt.figure(figsize=(6, 4))
 ax = plt.gca()
 ax.hist(df_three_feat.error, bins=40, edgecolor="gray")
-mu1 = df_three_feat.error.abs().mean()
-median1 = df_three_feat.error.median()
-sigma1 = df_three_feat.error.std()
-textstr1 = "\n".join(
-    (
-        r"$\mu_\mathrm{abs}=%.2f$" % (mu1,),
-        r"$\mathrm{median}=%.2f$" % (median1,),
-        r"$\sigma=%.2f$" % (sigma1,),
-    )
-)
+
+me = df_three_feat.error.mean()
+mape = df_three_feat.error_percent.mean()
+mae = df_three_feat.error.abs().mean()
+median = df_three_feat.error.median()
+std = df_three_feat.error.std()
+
+textstr1 = f"""\
+MAE:  {mae:.2f}
+MAPE: {mape:.2f}%
+ME:   {me:.2f}
+STD:  {std:.2f}\
+"""
+
 ax.set_ylabel("Flights", rotation=0, ha="left")
 ax.yaxis.set_label_coords(-0.095, 1.02)
 ax.set_xlabel("Estimation error, kg")
@@ -623,17 +586,12 @@ ax.text(
     0.65,
     0.95,
     textstr1,
+    fontsize=14,
+    fontfamily="monospace",
     transform=ax.transAxes,
     verticalalignment="top",
-    bbox=props,
 )
-# ax.grid(True)
-plt.savefig(
-    "figures/three_feat_estimation_err_hist.png",
-    bbox_inches="tight",
-    pad_inches=0.1,
-    dpi=150,
-)
+plt.savefig("figures/three_feat_estimation_err_hist.png", bbox_inches="tight", dpi=150)
 plt.show()
 
 # %% three feat table
@@ -743,7 +701,7 @@ ax.spines["right"].set_visible(False)
 ax.spines["top"].set_visible(False)
 ax.yaxis.set_label_coords(-0.15, 1.02)
 plt.tight_layout()
-plt.savefig("figures/temperatures.png", bbox_inches="tight", pad_inches=0.1, dpi=200)
+plt.savefig("figures/temperatures.png", bbox_inches="tight", dpi=150)
 
 plt.show()
 
