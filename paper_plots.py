@@ -7,9 +7,12 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
+import matplotlib.gridspec as gridspec
 from openap import top
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import HistGradientBoostingRegressor
 
 matplotlib.rc("font", size=12)
 matplotlib.rc("font", family="Ubuntu")
@@ -208,22 +211,8 @@ df_isa = pd.read_csv("data/optimal/a320_isa_df.csv").query("distance>500")
     df_isa.takeoff_mass / 1000,
 ]
 norm = Normalize(
-    vmin=min(
-        c_opt.min(),
-        c_opt_max.min(),
-        c_real.min(),
-        c_pred.min(),
-        c_osky.min(),
-        c_isa_max.min(),
-    ),
-    vmax=max(
-        c_opt.max(),
-        c_opt_max.max(),
-        c_real.max(),
-        c_pred.max(),
-        c_osky.max(),
-        c_isa_max.max(),
-    ),
+    vmin=oew * 1.2 / 1000,
+    vmax=m_mtow / 1000,
 )
 
 # %%
@@ -491,7 +480,6 @@ ax.set_ylabel("Max Cruise Altitude, ft", rotation=0, ha="left")
 ax.get_yaxis().set_major_formatter(
     matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
 )
-# ax.set_ylim(33000, 42000)
 ax.grid(True)
 ax.yaxis.set_label_coords(-0.15, 1.02)
 plt.tight_layout()
@@ -509,7 +497,7 @@ sm = ScalarMappable(norm=norm, cmap=cmap)
 ax.scatter(x_opt_max, y_opt_max, c=sm.to_rgba(c_opt_max), s=35)
 
 cbar = plt.colorbar(sm, ax=ax)
-ax.text(4600, 42000, "TOW, tons")
+ax.text(4600, 41750, "TOW, tons")
 
 ax.set_xlabel("Distance, km")
 ax.set_ylabel("Max Cruise Altitude, ft", rotation=0, ha="left")
@@ -523,40 +511,250 @@ plt.tight_layout()
 plt.savefig("figures/lookup_max_cruise.png", bbox_inches="tight", dpi=150)
 plt.show()
 
+
 # %%
-X = dataset_opt[["mean_cruise_altitude", "distance", "mean_cruise_tas"]].copy().values
-y = dataset_opt.iloc[:, 4].values
+def calculate_error_stats(df, error_cols, mape_cols):
 
-X_real = (
-    dataset_real[["mean_cruise_altitude", "distance", "mean_cruise_tas"]].copy().values
+    stats = []
+    for err_col, mape_col in zip(error_cols, mape_cols):
+        mae = df[err_col].abs().mean()
+        me = df[err_col].mean()
+        mape = df[mape_col].mean()
+        std = df[err_col].std()
+        stats.append(
+            (
+                f"""\
+                MAE:  {mae:.2f}
+                MAPE: {mape:.2f}%
+                ME:   {me:.2f}
+                STD:  {std:.2f}\
+                """
+            )
+        )
+    return stats
+
+
+def plot_histograms(df, error_columns, mape_columns, titles, file_name):
+    """Plot histograms with error statistics."""
+    fig = plt.figure(figsize=(11, 11))
+    gs = gridspec.GridSpec(38, 85)
+    axes = []
+
+    for i in range(int(len(error_columns) / 2)):
+        ax_mult = fig.add_subplot(gs[14 * i : 14 * (i + 1) - 5, 0:40])
+        ax_boost = fig.add_subplot(gs[14 * i : 14 * (i + 1) - 5, 45:85])
+        axes.extend([ax_mult, ax_boost])
+
+    for ax, col, title in zip(axes, error_columns, titles):
+
+        Q1 = np.percentile(df[col], 25)
+        Q3 = np.percentile(df[col], 75)
+        counts, edges, patches = ax.hist(
+            df[col], bins=40, edgecolor="gray", color="tab:blue"
+        )
+        for i, patch in enumerate(patches):
+            if edges[i] >= Q1 and edges[i + 1] <= Q3:
+                if "mult" in col:
+                    c = "sandybrown"
+                else:
+                    c = "lightskyblue"
+                patch.set_facecolor(c)
+                patch.set_edgecolor(c)
+            else:
+                patch.set_facecolor("gray")
+                patch.set_edgecolor("gray")
+        ax.axvline(0, color=".3", dashes=(2, 2), alpha=0.6)
+        ax.axvline(df[col].median(), color="k", linewidth=1)
+        ax.set_title(title)
+        ax.set_ylabel("Flights", rotation=0, ha="left")
+        ax.yaxis.set_label_coords(-0.095, 1.02)
+        ax.set_xlabel("Estimation error, kg")
+        ax.spines["right"].set_visible(False)
+        ax.spines["top"].set_visible(False)
+
+    stats = calculate_error_stats(df, error_columns, mape_columns)
+    for ax, stat in zip(axes, stats):
+        ax.text(
+            0.15,
+            0.95,
+            stat,
+            transform=ax.transAxes,
+            fontsize=11,
+            fontfamily="monospace",
+            verticalalignment="top",
+        )
+
+    plt.savefig(file_name, bbox_inches="tight", pad_inches=0.1, dpi=150)
+    plt.show()
+
+
+def plot_boxplots(df, error_columns, file_name):
+    df_melted = df.melt(
+        value_vars=error_columns,
+        var_name="Model",
+        value_name="Estimation Error",
+    )
+
+    df_melted["Model Type"] = df_melted["Model"].apply(
+        lambda x: "Multilinear" if "mult" in x else "Boosting"
+    )
+    df_melted["Feature Set"] = df_melted["Model"].apply(
+        lambda x: ("3D" if "_atd" in x else "2D")
+    )
+
+    plt.figure(figsize=(6, 4))
+    ax = sns.boxplot(
+        x="Feature Set",
+        y="Estimation Error",
+        hue="Model Type",
+        palette=["sandybrown", "lightskyblue"],
+        data=df_melted,
+        gap=0.05,
+    )
+    handles, _ = ax.get_legend_handles_labels()
+    ax.legend(handles, ["Multilinear", "Boosting"])
+    ax.axhline(0, color=".3", dashes=(2, 2), alpha=0.6)
+    ax.set_ylabel("Error, tons", rotation=0, ha="left")
+    ax.yaxis.set_label_coords(-0.095, 1.04)
+    ax.get_yaxis().set_major_formatter(
+        matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x / 1000), ","))
+    )
+    ax.set(xlabel=None)
+    sns.despine(offset=10, trim=True)
+    plt.savefig(file_name, bbox_inches="tight", pad_inches=0.1, dpi=150)
+
+    plt.show()
+
+
+# %%
+y = dataset_opt[["takeoff_mass"]].values
+X_ad_real = dataset_real[["mean_cruise_altitude", "distance"]].values
+X_ad = dataset_opt[["mean_cruise_altitude", "distance"]].values
+X_atd_real = dataset_real[
+    ["mean_cruise_altitude", "mean_cruise_tas", "distance"]
+].values
+X_atd = dataset_opt[["mean_cruise_altitude", "mean_cruise_tas", "distance"]].values
+df = dataset_real[
+    [
+        "fid",
+        "mean_cruise_altitude",
+        "distance",
+        "takeoff_mass",
+        "mean_cruise_tas",
+    ]
+]
+
+# Feature scaling
+sc_ad = StandardScaler()
+X_ad = sc_ad.fit_transform(X_ad)
+X_ad_real = sc_ad.transform(X_ad_real)
+sc_atd = StandardScaler()
+X_atd = sc_atd.fit_transform(X_atd)
+X_atd_real = sc_atd.transform(X_atd_real)
+# Set up models and predictions
+reg_ad = LinearRegression().fit(X_ad, y)
+est_ad = HistGradientBoostingRegressor().fit(X_ad, y)
+reg_atd = LinearRegression().fit(X_atd, y)
+est_atd = HistGradientBoostingRegressor().fit(X_atd, y)
+
+mult_pred_ad = reg_ad.predict(X_ad_real)
+boost_pred_ad = est_ad.predict(X_ad_real)
+mult_pred_atd = reg_atd.predict(X_atd_real)
+boost_pred_atd = est_atd.predict(X_atd_real)
+
+# Add predictions and errors to dataframe
+df = (
+    df.assign(
+        boost_pred_ad=boost_pred_ad,
+        mult_pred_ad=mult_pred_ad,
+        boost_pred_atd=boost_pred_atd,
+        mult_pred_atd=mult_pred_atd,
+    )
+    .assign(
+        boost_error_ad=lambda x: x.boost_pred_ad - x.takeoff_mass,
+        mult_error_ad=lambda x: x.mult_pred_ad - x.takeoff_mass,
+        boost_error_atd=lambda x: x.boost_pred_atd - x.takeoff_mass,
+        mult_error_atd=lambda x: x.mult_pred_atd - x.takeoff_mass,
+    )
+    .assign(
+        boost_mape_ad=lambda x: abs(x.boost_error_ad / x.takeoff_mass) * 100,
+        mult_mape_ad=lambda x: abs(x.mult_error_ad / x.takeoff_mass) * 100,
+        boost_mape_atd=lambda x: abs(x.boost_error_atd / x.takeoff_mass) * 100,
+        mult_mape_atd=lambda x: abs(x.mult_error_atd / x.takeoff_mass) * 100,
+    )
 )
-y_real = dataset_real.iloc[:, 4].values
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=33
+
+error_columns = [
+    "mult_error_ad",
+    "boost_error_ad",
+    "mult_error_atd",
+    "boost_error_atd",
+]
+
+titles = [
+    "Multilinear - 2D",
+    "Boosting - 2D",
+    "Multilinear - 3D",
+    "Boosting - 3D",
+]
+
+mape_columns = [
+    "mult_mape_ad",
+    "boost_mape_ad",
+    "mult_mape_atd",
+    "boost_mape_atd",
+]
+
+plot_histograms(
+    df, error_columns, mape_columns, titles, "figures/compare_models_err_hist.png"
 )
+
+plot_boxplots(df, error_columns, "figures/compare_models_boxplot.png")
+
+# %%
+for err_col, mape_col, title in zip(error_columns, mape_columns, titles):
+    stats_tab = []
+    for i in list(range(39, 31, -1)):
+        alt = i * 1000
+        alt_min = alt - 500
+        alt_max = alt + 500
+
+        if i == 39:
+            alt_max = 50_000
+        elif i == 32:
+            alt_min = 0
+
+        me = df.query("@alt_max > mean_cruise_altitude > @alt_min")[err_col].mean()
+        mae = (
+            df.query("@alt_max > mean_cruise_altitude > @alt_min")[err_col].abs().mean()
+        )
+        mape = df.query("@alt_max > mean_cruise_altitude > @alt_min")[mape_col].mean()
+        num_fli = len(df.query("@alt_max > mean_cruise_altitude > @alt_min"))
+        stats_tab.append(
+            {
+                "# of flights": num_fli,
+                "alt, ft": alt,
+                "me, kg": me.astype(int),
+                "mae, kg": mae.astype(int),
+                "mape %": mape,
+            }
+        )
+        df_stats = pd.DataFrame.from_dict(stats_tab)
+    print(title)
+    print(df_stats)
+
+# %%
+X = dataset_opt[["mean_cruise_altitude", "distance", "mean_cruise_tas"]].values
+y = dataset_opt[["takeoff_mass"]].values
+
+X_real = dataset_real[["mean_cruise_altitude", "distance", "mean_cruise_tas"]].values
+y_real = dataset_real[["takeoff_mass"]].values
 df_three_feat = dataset_real
-from sklearn.linear_model import LinearRegression
-
-regressor = LinearRegression()
-regressor.fit(X_train, y_train)
-
-y_pred = regressor.predict(X_test)
-np.set_printoptions(precision=2)
-
-diff = np.concatenate(
-    (y_pred.reshape(len(y_pred), 1), y_test.reshape(len(y_test), 1)), 1
-)
-df_testing = pd.DataFrame(diff, columns=["pred", "test"])
-df_testing = df_testing.assign(error=lambda x: x.pred - x.test)
-
-single = regressor.predict(X_real)
-df_three_feat = df_three_feat.assign(pred=single)
+regressor = LinearRegression().fit(X, y)
+pred = regressor.predict(X_real)
+df_three_feat = df_three_feat.assign(pred=pred)
 df_three_feat = df_three_feat.assign(error=lambda x: x.pred - x.takeoff_mass)
-
-df_testing = df_testing.assign(error_percent=lambda x: abs(x.error / x.test) * 100)
-df_three_feat = df_three_feat.assign(
-    error_percent=lambda x: abs(x.error / x.takeoff_mass) * 100
-)
+df_three_feat = df_three_feat.assign(mape=lambda x: abs(x.error / x.takeoff_mass) * 100)
 
 ###############
 plt.figure(figsize=(6, 4))
@@ -564,7 +762,7 @@ ax = plt.gca()
 ax.hist(df_three_feat.error, bins=40, edgecolor="gray")
 
 me = df_three_feat.error.mean()
-mape = df_three_feat.error_percent.mean()
+mape = df_three_feat.mape.mean()
 mae = df_three_feat.error.abs().mean()
 median = df_three_feat.error.median()
 std = df_three_feat.error.std()
@@ -593,41 +791,6 @@ ax.text(
 )
 plt.savefig("figures/three_feat_estimation_err_hist.png", bbox_inches="tight", dpi=150)
 plt.show()
-
-# %% three feat table
-tabl2 = []
-for i in list(range(39, 31, -1)):
-    alt = i * 1000
-    alt_min = alt - 500
-    alt_max = alt + 500
-
-    if i == 39:
-        alt_max = 50_000
-    elif i == 32:
-        alt_min = 0
-
-    me = df_three_feat.query("@alt_max > mean_cruise_altitude > @alt_min").error.mean()
-    mae = (
-        df_three_feat.query("@alt_max > mean_cruise_altitude > @alt_min")
-        .error.abs()
-        .mean()
-    )
-    mape = df_three_feat.query(
-        "@alt_max > mean_cruise_altitude > @alt_min"
-    ).error_percent.mean()
-    num_fli = len(df_three_feat.query("@alt_max > mean_cruise_altitude > @alt_min"))
-    tabl2.append(
-        {
-            "# of flights": num_fli,
-            "alt, ft": alt,
-            "me, kg": me.astype(int),
-            "mae, kg": mae.astype(int),
-            "mape %": mape,
-        }
-    )
-    tabl2_df = pd.DataFrame.from_dict(tabl2)
-
-tabl2_df
 
 # %%
 import xarray as xr
