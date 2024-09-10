@@ -83,8 +83,8 @@ def generate_ac(ac, workers=8, grid_size=40, overwrite=False):
     )
 
     options = pd.DataFrame(options, columns=["mass", "distance"])
-
-    fout = f"{root_dir}/data/optimal/all_flights_per_ac/{ac}-isa.csv"
+    Path(f"{root_dir}/data/optimal/raw/").mkdir(exist_ok=True)
+    fout = f"{root_dir}/data/optimal/raw/{ac}.csv"
 
     if not overwrite and Path(fout).exists():
         return
@@ -112,17 +112,17 @@ def generate_ac(ac, workers=8, grid_size=40, overwrite=False):
 @click.command()
 @click.option("--ac", required=True, help="aircraft type")
 @click.option("--workers", default=6)
-@click.option("--overwrite", is_flag=True, default=True)
+@click.option("--overwrite", is_flag=True, default=False)
 @click.option("--grid-size", default=40)
 def main(ac, workers, overwrite, grid_size):
     ac = ac.lower()
     if ac == "all":
         all_acs = openap.prop.available_aircraft()
 
-        if not overwrite:
-            files = glob.glob(f"{root_dir}/data/optimal/all_flights_per_ac/*.csv")
-            processed = [Path(f).stem for f in files]
-            all_acs = set(all_acs) - set(processed)
+        # if not overwrite:
+        #     files = glob.glob(f"{root_dir}/data/optimal/raw/*.csv")
+        #     processed = [Path(f).stem for f in files]
+        #     all_acs = set(all_acs) - set(processed)
 
         for ac in all_acs:
             generate_ac(ac, workers=workers, overwrite=overwrite, grid_size=grid_size)

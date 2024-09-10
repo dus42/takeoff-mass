@@ -16,17 +16,16 @@ matplotlib.rc("grid", color="darkgray", linestyle=":")
 
 # %%
 dataset_opt = pd.read_csv("data/optimal/a320_optimal_df.csv")
-dataset_opt = dataset_opt.loc[:, ~dataset_opt.columns.str.contains("^Unnamed")]
 dataset_opt = dataset_opt.drop(columns=["max_cruise_altitude"]).query("distance>500")
-X = dataset_opt.iloc[:, 1:3].values
-y = dataset_opt.iloc[:, 3].values
+X = dataset_opt[["mean_cruise_altitude", "distance"]].values
+y = dataset_opt[["takeoff_mass"]].values
 
 # %%
 dataset_real = pd.read_csv("data/qar_data/a320_real_df.csv")
 dataset_real = dataset_real.loc[:, ~dataset_real.columns.str.contains("^Unnamed")]
 
-X_real = dataset_real.iloc[:, 1:3].values
-y_real = dataset_real.iloc[:, 3].values
+X_real = dataset_real[["mean_cruise_altitude", "distance"]].values
+y_real = dataset_real[["takeoff_mass"]].values
 # %%
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=33
@@ -47,13 +46,19 @@ diff = np.concatenate(
 )
 df_testing = pd.DataFrame(diff, columns=["pred", "test"])
 df_testing = df_testing.assign(error=lambda x: x.pred - x.test)
+df_testing = df_testing.assign(error_percent=lambda x: abs(x.error / x.test) * 100)
+print(f"Mean test/train estimation error: {round(df_testing.error_percent.mean(),2)}%")
+print(f"Max test/train estimation error: {round(df_testing.error_percent.max(),2)}%")
+print(f"Max test/train estimation error: {round(df_testing.error.max(),2)} kg")
 # %%
-single = regressor.predict(X_real)
-dataset_real = dataset_real.assign(pred=single)
+reg_full = LinearRegression()
+reg_full.fit(X, y)
+pred = reg_full.predict(X_real)
+dataset_real = dataset_real.assign(pred=pred)
 dataset_real = dataset_real.assign(error=lambda x: x.pred - x.takeoff_mass)
 
 # %%
-df_testing = df_testing.assign(error_percent=lambda x: abs(x.error / x.test) * 100)
+
 dataset_real = dataset_real.assign(
     error_percent=lambda x: abs(x.error / x.takeoff_mass) * 100
 )
@@ -81,13 +86,18 @@ ax.yaxis.set_label_coords(-0.095, 1.02)
 ax.legend()
 plt.tight_layout()
 plt.savefig(
-    "figures/train_test_acc_check.png",
+    "figures/train_test_acc_check.pdf",
     bbox_inches="tight",
     pad_inches=0.1,
-    dpi=150,
 )
 plt.show()
 
+# %%
+coefs = list(reg_full.coef_[0])
+coefs.append(reg_full.intercept_[0])
+print(
+    f"Coefficients: TOW = ({round(coefs[1],5)}) * dist + ({round(coefs[0],5)}) * h + ({round(coefs[2],0)})"
+)
 
 # opensky data
 # %%
@@ -97,11 +107,11 @@ dataset_osky = dataset_osky.query(
 ).reset_index(drop=True)
 dataset_osky = dataset_osky.loc[:, ~dataset_osky.columns.str.contains("^Unnamed")]
 # %%
-X_osky = dataset_osky.iloc[:, 1:3].values
+X_osky = dataset_osky[["mean_cruise_altitude", "distance"]].values
 
 # %%
-single = regressor.predict(X_osky)
-dataset_osky = dataset_osky.assign(takeoff_mass=single)
+pred = regressor.predict(X_osky)
+dataset_osky = dataset_osky.assign(takeoff_mass=pred)
 # %%
 dataset_osky.to_csv("data/a320_estimate_opensky.csv")
 # %%
