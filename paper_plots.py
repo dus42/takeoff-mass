@@ -84,7 +84,7 @@ ax.get_yaxis().set_major_formatter(
     matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
 )
 
-plt.savefig("figures/alt_vs_dist.pdf", bbox_inches="tight")
+
 plt.savefig("figures/alt_vs_dist.png", bbox_inches="tight", dpi=100)
 
 plt.show()
@@ -139,7 +139,7 @@ ax.get_yaxis().set_major_formatter(
     matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
 )
 
-plt.savefig("figures/alt_vs_mass.pdf", bbox_inches="tight")
+
 plt.savefig("figures/alt_vs_mass.png", bbox_inches="tight", dpi=100)
 plt.show()
 
@@ -198,7 +198,7 @@ ax.grid(True)
 
 ax.yaxis.set_label_coords(-0.15, 1.02)
 plt.tight_layout()
-plt.savefig("figures/lookup.pdf", bbox_inches="tight")
+
 plt.savefig("figures/lookup.png", bbox_inches="tight", dpi=100)
 
 plt.show()
@@ -223,9 +223,10 @@ ax.get_yaxis().set_major_formatter(
 ax.grid(True)
 ax.yaxis.set_label_coords(-0.15, 1.02)
 plt.tight_layout()
-plt.savefig("figures/opensky.pdf", bbox_inches="tight")
+
 plt.savefig("figures/opensky.png", bbox_inches="tight", dpi=100)
 plt.show()
+
 # %%
 sample_df = pd.read_csv("data/sample_flight/flight-ac1-571.csv")
 d = sample_df.distance.max()
@@ -251,6 +252,8 @@ flight = (
 flight.to_csv("data/sample_flight/fuel_optimal_flight-ac1-571.csv")
 
 # %%
+m_actual = dataset_real.query("fid== 'ac1-571'").takeoff_mass.values[0] / 1000
+m_pred = dataset_real.query("fid== 'ac1-571'").pred.values[0] / 1000
 fig = plt.figure(figsize=(6, 7))
 gs = matplotlib.gridspec.GridSpec(60, 40)
 sm = ScalarMappable(norm=norm, cmap=cmap)
@@ -269,11 +272,35 @@ ax1.scatter(
 ax1.scatter(
     dataset_real.query("fid== 'ac1-571'").distance.values[0],
     dataset_real.query("fid== 'ac1-571'").mean_cruise_altitude.values[0],
-    c=sm.to_rgba(dataset_real.query("fid== 'ac1-571'").takeoff_mass.values[0] / 1000),
+    c=sm.to_rgba(m_pred),
     s=35,
 )
 
 cbar = plt.colorbar(sm, ax=ax1)
+cbar.ax.text(
+    0.05,
+    m_actual,
+    "----real",
+    va="center",
+    ha="left",
+    color="tab:red",
+    fontsize=12,
+    fontweight="bold",
+    transform=cbar.ax.get_yaxis_transform(),
+)
+cbar.ax.text(
+    0.05,
+    m_pred,
+    "----pred",
+    va="center",
+    ha="left",
+    color="blue",
+    fontsize=12,
+    fontweight="bold",
+    transform=cbar.ax.get_yaxis_transform(),
+)
+
+
 ax1.text(4600, 41700, "TOW, tons")
 
 ax1.set_xlabel("Distance, km")
@@ -314,8 +341,8 @@ ax2.get_yaxis().set_major_formatter(
 )
 
 plt.tight_layout()
-plt.savefig("figures/sample_real_in_lookup.pdf", bbox_inches="tight")
-plt.savefig("figures/sample_real_in_lookup.png", bbox_inches="tight", dpi=1)
+
+plt.savefig("figures/sample_real_in_lookup.png", bbox_inches="tight", dpi=100)
 plt.show()
 print("Sample flight dist = " + str(round(sample_df.distance.max(), 2)))
 print(
@@ -441,12 +468,13 @@ mape_columns = [
 
 stats = calculate_error_stats(df, pred_cols, error_columns, mape_columns)
 
+
 # %%
-fig = plt.figure(figsize=(16, 4))
-gs = matplotlib.gridspec.GridSpec(10, 91)
-ax1 = fig.add_subplot(gs[:8, 0:25])
-ax2 = fig.add_subplot(gs[:8, 31:56])
-ax3 = fig.add_subplot(gs[:8, 62:91])
+fig = plt.figure(figsize=(18, 5))
+gs = matplotlib.gridspec.GridSpec(1, 91)
+ax1 = fig.add_subplot(gs[:, 0:25])
+ax2 = fig.add_subplot(gs[:, 31:56])
+ax3 = fig.add_subplot(gs[:, 62:91])
 cmap = plt.get_cmap("viridis").reversed()
 sm = ScalarMappable(norm=norm, cmap=cmap)
 
@@ -466,12 +494,12 @@ for ax in [ax1, ax2, ax3]:
 cbar = plt.colorbar(sm, ax=ax3)
 ax3.text(3500, 39700, "TOW, tons")
 
-ax1.set_title("a) Real flights", fontsize=13, y=-0.35)
-ax2.set_title("b) Multilinear model estimation", fontsize=13, y=-0.35)
-ax3.set_title("c) Boosting model estimation", fontsize=13, y=-0.35)
+ax1.set_title("a) Real flights", fontsize=13, y=-0.22)
+ax2.set_title("b) Multilinear model estimation", fontsize=13, y=-0.22)
+ax3.set_title("c) Boosting model estimation", fontsize=13, y=-0.22)
 
 plt.tight_layout()
-plt.savefig("figures/real_vs_opt.pdf", bbox_inches="tight")
+
 plt.savefig("figures/real_vs_opt.png", bbox_inches="tight", dpi=100)
 plt.show()
 
@@ -514,9 +542,10 @@ def plot_histograms(df, stats, error_columns, mape_columns, titles, file_name=No
         ax.spines["right"].set_visible(False)
         ax.spines["top"].set_visible(False)
         ax.set_yticks(np.arange(0, 70, 20))
+        ax.set_xticks(np.arange(-10, 35, 5), minor=True)
         # ax.set_ylim(0, 70)
         ax.set_xlim(-10, 35)
-        ax.grid()
+        ax.grid(which="both")
         # ax.set_xlim(-10_000,25_000)
 
         if i < 2:
@@ -530,7 +559,7 @@ def plot_histograms(df, stats, error_columns, mape_columns, titles, file_name=No
             stat,
             ha="right",
             transform=ax.transAxes,
-            fontsize=11,
+            fontsize=12,
             fontfamily="monospace",
             verticalalignment="top",
         )
@@ -596,7 +625,7 @@ def plot_boxplots(df, error_columns, file_name=None):
 # plot_boxplots(df, error_columns, "figures/compare_models_boxplot")
 
 # %%
-tabl = []
+tabl_alt_err = []
 for i in list(range(39, 31, -1)):
     alt = i * 1000
     alt_min = alt - 500
@@ -617,46 +646,32 @@ for i in list(range(39, 31, -1)):
         dataset_real.query("@alt_max > mean_cruise_altitude > @alt_min").takeoff_mass,
         dataset_real.query("@alt_max > mean_cruise_altitude > @alt_min").pred.values,
     )
-    mape = dataset_real.query(
-        "@alt_max > mean_cruise_altitude > @alt_min"
-    ).error_percent.mean()
+    mape = round(
+        dataset_real.query(
+            "@alt_max > mean_cruise_altitude > @alt_min"
+        ).error_percent.mean(),
+        2,
+    )
     num_fli = len(dataset_real.query("@alt_max > mean_cruise_altitude > @alt_min"))
-    tabl.append(
+    tabl_alt_err.append(
         {
             "# of flights": num_fli,
-            "alt, ft": alt,
-            "me, kg": me.astype(int),
-            "mae, kg": mae.astype(int),
-            "rmse, kg": rmse.astype(int),
-            "mape %": mape,
+            "separator0": "&",
+            "alt, ft": f"{alt:,}".replace(",", " "),
+            "separator1": "&",
+            "me, kg": f"{int(me):,}".replace(",", " "),
+            "separator2": "&",
+            "mae, kg": f"{mae.astype(int):,}".replace(",", " "),
+            "separator3": "&",
+            "rmse, kg": f"{rmse.astype(int):,}".replace(",", " "),
+            "separator4": "&",
+            "mape %": f"{mape:0.2f}" + "\%",
+            "separator5": "\\\\",
         }
     )
-    tabl_df = pd.DataFrame.from_dict(tabl)
-
-tabl_df
-# %%
-stats_tab = []
-for pred_col, err_col, mape_col, title in zip(
-    pred_cols, error_columns, mape_columns, titles
-):
-    me = df[err_col].median()
-    mae = df[err_col].abs().mean()
-    mape = df[mape_col].mean()
-    rmse = root_mean_squared_error(df.takeoff_mass.values, df[pred_col].values)
-    num_fli = len(df)
-
-    stats_tab.append(
-        {
-            "model": title,
-            "me, kg": me.astype(int),
-            "mae, kg": mae.astype(int),
-            "rmse, kg": rmse.astype(int),
-            "mape %": mape,
-        }
-    )
-df_stats = pd.DataFrame.from_dict(stats_tab)
-df_stats
-
+df_alt_err = pd.DataFrame.from_dict(tabl_alt_err)
+df_alt_err = df_alt_err.set_index(["# of flights"])
+df_alt_err
 # %%
 import xarray as xr
 
@@ -674,7 +689,7 @@ df_wind = df_wind.query("altitude<60000")
 
 # %%
 h = np.arange(0, 18000, 50)
-p, rho, T = openap.aero.atmos(h)
+p, rho, temp = openap.aero.atmos(h)
 
 a, b, d = [85.46369268, -0.00017235, 213.31449979]
 temp_exp = a * np.exp(h * b) + d
@@ -695,13 +710,6 @@ for i in range(-90, 90, 10):
 for i in range(-20, 30, 10):
     if i == 0:
         ax.plot(temp + i, h, "tab:red", label="ISA model")
-        # ax.plot(
-        #     temp_exp + i,
-        #     h,
-        #     "tab:blue",
-        #     # linewidth=4,
-        #     label="ISA apprixomation",
-        # )
     else:
         ax.plot(
             temp + i,
@@ -710,15 +718,8 @@ for i in range(-20, 30, 10):
             linestyle="dashed",
             label="ISA model shifts" if i == -10 else "_nolegend_",
         )
-        # ax.plot(
-        #     temp_exp + i,
-        #     h,
-        #     "tab:blue",
-        #     linestyle="dashed",
-        #     label="ISA approximation with shifts" if i == -10 else "_nolegend_",
-        # )
+
 ax.set_ylim(0, 17500)
-# ax.grid(True)
 ax.get_yaxis().set_major_formatter(
     matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
 )
@@ -729,9 +730,138 @@ ax.spines["right"].set_visible(False)
 ax.spines["top"].set_visible(False)
 ax.yaxis.set_label_coords(-0.15, 1.02)
 plt.tight_layout()
-plt.savefig("figures/temperatures.pdf", bbox_inches="tight")
 
+plt.savefig("figures/temperatures.png", bbox_inches="tight", dpi=100)
 plt.show()
 
 
+# %%
+sample_df = pd.read_csv("data/sample_flight/flight-ac1-571.csv")
+flight = pd.read_csv("data/sample_flight/fuel_optimal_flight-ac1-571.csv")
+# %%
+d = sample_df.distance.max()
+start_lon = -150
+m = sample_df.gw_kg.max() / m_mtow
+start = (0, start_lon)
+end = (0, start_lon + d / 111.321)
+
+optimizer = top.CompleteFlight(ac, start, end, m)
+optimizer.setup_dc(nodes=94)
+
+flight1 = optimizer.trajectory(objective="fuel")
+
+flight1 = (
+    flight1.drop(["latitude", "longitude", "h"], axis=1)
+    .assign(
+        distance=lambda d: ((d.x - d.x.iloc[0]) / 1000).astype(int),
+    )
+    .drop(["x", "y"], axis=1)
+)
+flight1.to_csv("data/sample_flight/fuel_optimal_flight_real_tow-ac1-571.csv")
+# %%
+flight1 = pd.read_csv("data/sample_flight/fuel_optimal_flight_real_tow-ac1-571.csv")
+coefs = pd.read_csv("lin_two_feat_coefs.csv")
+
+
+# %%
+plt.figure(figsize=(6, 4))
+ax = plt.subplot()
+ax.plot(
+    sample_df.distance,
+    sample_df.altitude,
+    "tab:blue",
+    label=f"Real, TOW = {round(sample_df.gw_kg.max()/1000,2)} tons",
+)
+ax.plot(
+    flight1.distance,
+    flight1.altitude,
+    "tab:green",
+    label=f"Opt, TOW = {round(flight1.mass.max()/1000,2)} tons",
+)
+ax.plot(
+    flight.distance,
+    flight.altitude,
+    "tab:red",
+    label=f"Opt, TOW = {round(flight.mass.max()/1000,2)} tons",
+)
+plt.legend()
+
+
+ax.set_xlabel("Distance, km")
+ax.set_ylabel("Altitude, ft", rotation=0, ha="left")
+# ax.legend(loc="right")
+
+ax.spines["right"].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.yaxis.set_label_coords(-0.15, 1.02)
+ax.get_yaxis().set_major_formatter(
+    matplotlib.ticker.FuncFormatter(lambda x, p: format(int(x), ","))
+)
+plt.grid(axis="y")
+
+plt.savefig("figures/roo.png", bbox_inches="tight", dpi=100)
+
+plt.show()
+# %%
+# %%
+alt_real = sample_df.query("-500<roc<50 and altitude>30000").altitude.mean().astype(int)
+tas_real = sample_df.query("-500<roc<50 and altitude>30000").tas.mean().astype(int)
+real_params = [
+    f"{alt_real:,}".replace(",", " "),
+    f"{tas_real:,}".replace(",", " "),
+    f"{int(sample_df.distance.max()):,}".replace(",", " "),
+    f"{int(sample_df.ts.max() / 60):,}".replace(",", " "),
+    f"{int(sample_df.gw_kg.min()):,}".replace(",", " "),
+    f"{int(sample_df.gw_kg.max()):,}".replace(",", " "),
+    f"{int(sample_df.gw_kg.max() - sample_df.gw_kg.min()):,}".replace(",", " "),
+]
+alt_opt1 = flight.query("-500<vertical_rate<50").altitude.mean().astype(int)
+tas_opt1 = flight.query("-500<vertical_rate<50").tas.mean().astype(int)
+opt1_params = [
+    f"{alt_opt1:,}".replace(",", " "),
+    f"{tas_opt1:,}".replace(",", " "),
+    f"{int(flight.distance.max()):,}".replace(",", " "),
+    f"{int(flight.ts.max() / 60):,}".replace(",", " "),
+    f"{int(flight.mass.min()):,}".replace(",", " "),
+    f"{int(flight.mass.max()):,}".replace(",", " "),
+    f"{int(flight.mass.max() - flight.mass.min()):,}".replace(",", " "),
+]
+
+alt_opt2 = flight.query("-500<vertical_rate<50").altitude.mean().astype(int)
+tas_opt2 = flight.query("-500<vertical_rate<50").tas.mean().astype(int)
+opt2_params = [
+    f"{alt_opt2:,}".replace(",", " "),
+    f"{tas_opt2:,}".replace(",", " "),
+    f"{int(flight1.distance.max()):,}".replace(",", " "),
+    f"{int(flight1.ts.max() / 60):,}".replace(",", " "),
+    f"{int(flight1.mass.min()):,}".replace(",", " "),
+    f"{int(flight1.mass.max()):,}".replace(",", " "),
+    f"{int(flight1.mass.max() - flight1.mass.min()):,}".replace(",", " "),
+]
+df_roo = pd.DataFrame(
+    np.array(["&"] * 7).reshape(7, 1),
+    columns=["separator0"],
+    index=[
+        "Mean cruise altitude (ft) ",
+        "Mean cruise TAS (kt)",
+        "Air distance (km)",
+        "Flight time (min)",
+        "Take-off mass (kg) ",
+        "Landing mass (kg)",
+        "Fuel spent (kg)",
+    ],
+).assign(
+    real=real_params,
+    separator1=["&"] * 7,
+    opt_real_tow=opt2_params,
+    separator2=["&"] * 7,
+    opt_opt_tow=opt1_params,
+    separator3=[r"\\"] * 7,
+)
+# df_roo = df_roo.assign(
+
+#     opt_real_tow=lambda x: round(x.opt_real_tow, 0).astype(int),
+#     opt_opt_tow=lambda x: round(x.opt_opt_tow, 0).astype(int),
+# )
+df_roo
 # %%

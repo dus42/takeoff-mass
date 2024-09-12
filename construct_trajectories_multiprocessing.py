@@ -118,6 +118,22 @@ def main(ac, workers, overwrite, grid_size):
     ac = ac.lower()
     if ac == "all":
         all_acs = openap.prop.available_aircraft()
+        all_acs = [
+            # "a318",
+            "a319",
+            "a320",
+            "a321",
+            "a332",
+            "a333",
+            # "b734",
+            "b737",
+            "b738",
+            "b739",
+            # "e170",
+            "e190",
+            # "e195",
+            # "e75l",
+        ]
 
         # if not overwrite:
         #     files = glob.glob(f"{root_dir}/data/optimal/raw/*.csv")
