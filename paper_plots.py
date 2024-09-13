@@ -176,6 +176,11 @@ norm = Normalize(
     vmin=oew * 1.2 / 1000,
     vmax=m_mtow / 1000,
 )
+coefs = pd.read_csv("lin_two_feat_coefs.csv")
+print(
+    f"Coefficients: TOW = ({round(coefs.distance.values[0],5)}) * dist + ({round(coefs.altitude.values[0],5)}) * h + ({round(coefs.constant.values[0],0)})"
+)
+
 
 # %%
 plt.figure(figsize=(6, 4))
@@ -202,6 +207,7 @@ plt.tight_layout()
 plt.savefig("figures/lookup.png", bbox_inches="tight", dpi=100)
 
 plt.show()
+
 
 # %%
 plt.figure(figsize=(6, 4))
@@ -370,13 +376,22 @@ def calculate_error_stats(df, pred_cols, error_cols, mape_cols):
         mape = df[mape_col].mean()
         std = df[err_col].std()
         rmse = root_mean_squared_error(df.takeoff_mass, df[pred_col].values)
-        stats.append(
-            f"RMSE:  {int(rmse)} kg\n"
-            f"MAE:   {int(mae)} kg\n"
-            f"MAPE:  {mape:.2f} % \n"
-            f"ME:   {int(me):+05d} kg\n"
-            f"STD:   {int(std)} kg\n"
-        )
+        if mape >= 10:
+            stats.append(
+                f"RMSE:  {int(rmse)} kg\n"
+                f"MAE:   {int(mae)} kg\n"
+                f"MAPE: {mape:.2f} % \n"
+                f"ME:   {int(me):+05d} kg\n"
+                f"STD:   {int(std)} kg\n"
+            )
+        else:
+            stats.append(
+                f"RMSE:  {int(rmse)} kg\n"
+                f"MAE:   {int(mae)} kg\n"
+                f"MAPE:  {mape:.2f} % \n"
+                f"ME:   {int(me):+05d} kg\n"
+                f"STD:   {int(std)} kg\n"
+            )
     return stats
 
 
@@ -579,6 +594,8 @@ plot_histograms(
     titles,
     "figures/compare_models_err_hist",
 )
+# %%
+print(f"Largest error mult: {df.mult_error_ad.max()}")
 
 
 # %%
@@ -655,22 +672,16 @@ for i in list(range(39, 31, -1)):
     num_fli = len(dataset_real.query("@alt_max > mean_cruise_altitude > @alt_min"))
     tabl_alt_err.append(
         {
-            "# of flights": num_fli,
-            "separator0": "&",
-            "alt, ft": f"{alt:,}".replace(",", " "),
-            "separator1": "&",
-            "me, kg": f"{int(me):,}".replace(",", " "),
-            "separator2": "&",
-            "mae, kg": f"{mae.astype(int):,}".replace(",", " "),
-            "separator3": "&",
-            "rmse, kg": f"{rmse.astype(int):,}".replace(",", " "),
-            "separator4": "&",
-            "mape %": f"{mape:0.2f}" + "\%",
-            "separator5": "\\\\",
+            "flights": num_fli,
+            "Alt. (ft)": f"{alt:,}".replace(",", " "),
+            "ME (kg))": f"{int(me):,}".replace(",", " "),
+            "MAE (kg))": f"{mae.astype(int):,}".replace(",", " "),
+            "RMSE (kg))": f"{rmse.astype(int):,}".replace(",", " "),
+            "MAPE (%)": f"{mape:0.2f}" + "\%",
         }
     )
 df_alt_err = pd.DataFrame.from_dict(tabl_alt_err)
-df_alt_err = df_alt_err.set_index(["# of flights"])
+# print(df_alt_err.to_latex(index=False))
 df_alt_err
 # %%
 import xarray as xr
@@ -769,20 +780,20 @@ ax = plt.subplot()
 ax.plot(
     sample_df.distance,
     sample_df.altitude,
-    "tab:blue",
+    "tab:red",
     label=f"Real, TOW = {round(sample_df.gw_kg.max()/1000,2)} tons",
 )
 ax.plot(
     flight1.distance,
     flight1.altitude,
     "tab:green",
-    label=f"Opt, TOW = {round(flight1.mass.max()/1000,2)} tons",
+    label=f"Optimal, TOW = {round(flight1.mass.max()/1000,2)} tons",
 )
 ax.plot(
     flight.distance,
     flight.altitude,
-    "tab:red",
-    label=f"Opt, TOW = {round(flight.mass.max()/1000,2)} tons",
+    "tab:blue",
+    label=f"Optimal, TOW = {round(flight.mass.max()/1000,2)} tons",
 )
 plt.legend()
 
@@ -811,8 +822,8 @@ real_params = [
     f"{tas_real:,}".replace(",", " "),
     f"{int(sample_df.distance.max()):,}".replace(",", " "),
     f"{int(sample_df.ts.max() / 60):,}".replace(",", " "),
-    f"{int(sample_df.gw_kg.min()):,}".replace(",", " "),
     f"{int(sample_df.gw_kg.max()):,}".replace(",", " "),
+    f"{int(sample_df.gw_kg.min()):,}".replace(",", " "),
     f"{int(sample_df.gw_kg.max() - sample_df.gw_kg.min()):,}".replace(",", " "),
 ]
 alt_opt1 = flight.query("-500<vertical_rate<50").altitude.mean().astype(int)
@@ -822,25 +833,27 @@ opt1_params = [
     f"{tas_opt1:,}".replace(",", " "),
     f"{int(flight.distance.max()):,}".replace(",", " "),
     f"{int(flight.ts.max() / 60):,}".replace(",", " "),
-    f"{int(flight.mass.min()):,}".replace(",", " "),
     f"{int(flight.mass.max()):,}".replace(",", " "),
+    f"{int(flight.mass.min()):,}".replace(",", " "),
     f"{int(flight.mass.max() - flight.mass.min()):,}".replace(",", " "),
 ]
 
-alt_opt2 = flight.query("-500<vertical_rate<50").altitude.mean().astype(int)
-tas_opt2 = flight.query("-500<vertical_rate<50").tas.mean().astype(int)
+alt_opt2 = flight1.query("-500<vertical_rate<50").altitude.mean().astype(int)
+tas_opt2 = flight1.query("-500<vertical_rate<50").tas.mean().astype(int)
 opt2_params = [
     f"{alt_opt2:,}".replace(",", " "),
     f"{tas_opt2:,}".replace(",", " "),
     f"{int(flight1.distance.max()):,}".replace(",", " "),
     f"{int(flight1.ts.max() / 60):,}".replace(",", " "),
-    f"{int(flight1.mass.min()):,}".replace(",", " "),
     f"{int(flight1.mass.max()):,}".replace(",", " "),
+    f"{int(flight1.mass.min()):,}".replace(",", " "),
     f"{int(flight1.mass.max() - flight1.mass.min()):,}".replace(",", " "),
 ]
 df_roo = pd.DataFrame(
-    np.array(["&"] * 7).reshape(7, 1),
-    columns=["separator0"],
+    np.zeros(
+        7,
+    ),
+    columns=["real"],
     index=[
         "Mean cruise altitude (ft) ",
         "Mean cruise TAS (kt)",
@@ -852,16 +865,9 @@ df_roo = pd.DataFrame(
     ],
 ).assign(
     real=real_params,
-    separator1=["&"] * 7,
     opt_real_tow=opt2_params,
-    separator2=["&"] * 7,
     opt_opt_tow=opt1_params,
-    separator3=[r"\\"] * 7,
 )
-# df_roo = df_roo.assign(
-
-#     opt_real_tow=lambda x: round(x.opt_real_tow, 0).astype(int),
-#     opt_opt_tow=lambda x: round(x.opt_opt_tow, 0).astype(int),
-# )
+# print(df_roo.rename(columns = {"real":"Real", "opt_real_tow":"Optimal (Actual TOW)","opt_opt_tow":"Optimal (Estimated TOW)",}).to_latex())
 df_roo
 # %%
